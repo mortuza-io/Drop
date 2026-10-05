@@ -1,4 +1,4 @@
-# dropy
+# drop
 
 Send files. Leave no trace. Drop a file up to 100 MB, get a link and QR code, and it deletes itself on schedule. No account needed.
 
