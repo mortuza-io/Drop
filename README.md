@@ -1,7 +1,5 @@
 # dropy
 
-[![Open in Bolt](https://bolt.new/static/open-in-bolt.svg)](https://bolt.new/~/sb1-fjxv4z7m)
-
 Send files. Leave no trace. Drop a file up to 100 MB, get a link and QR code, and it deletes itself on schedule. No account needed.
 
 ## Features
