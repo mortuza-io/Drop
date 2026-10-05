@@ -1,0 +1,5 @@
+[functions.files]
+verify_jwt = true
+
+[functions.cleanup]
+verify_jwt = false
