@@ -16,14 +16,14 @@ Send files. Leave no trace. Drop a file up to 100 MB, get a link and QR code, an
 | Piece | Where it runs | Job |
 | --- | --- | --- |
 | Web app (`src/`) | Any static host | The interface. Never touches storage keys. |
-| `files` function | Supabase Edge Functions | Validates uploads, signs short-lived R2 upload/download URLs, checks passwords, enforces limits, lists and deletes your files. |
+| `files` API (`api/files.ts`) | Vercel Serverless Function | Validates uploads, signs short-lived R2 upload/download URLs, checks passwords, enforces limits, lists and deletes your files. |
 | `cleanup` function | Supabase Edge Functions | Deletes expired, used-up, and abandoned files from R2 and the database. |
 | Database | Supabase Postgres | File records (name, size, expiry, limits, hashed password, hashed owner token). Runs `cleanup` every 15 minutes via `pg_cron`. |
 | File bytes | Cloudflare R2 | Uploaded directly from the browser through signed URLs. |
 
 ### Upload flow
 
-1. The browser asks the `files` function to `create` an upload. The server validates size (≤ 100 MB), lifetime (≤ 90 days), and limits, then returns a download code, a secret owner token, and a 1-hour signed R2 upload URL.
+1. The browser asks the `files` API to `create` an upload. The server validates size (≤ 100 MB), lifetime (≤ 90 days), and limits, then returns a download code, a secret owner token, and a 1-hour signed R2 upload URL.
 2. The browser `PUT`s the file straight to R2.
 3. The browser calls `finalize`. The server confirms the object exists in R2 with the declared size before the link goes live.
 4. The code and owner token are saved in `localStorage` so the "Your uploads" panel works without an account.
@@ -58,10 +58,12 @@ Send files. Leave no trace. Drop a file up to 100 MB, get a link and QR code, an
 
 ### 2. Server secrets
 
-Add these as Edge Function secrets (in Bolt: database icon > Secrets):
+Add these as server-side environment variables (Vercel Project Settings > Environment Variables, or Supabase Edge Function secrets if you still use that runtime):
 
 | Secret | Value |
 | --- | --- |
+| `SUPABASE_URL` | Your Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-only) |
 | `R2_ACCOUNT_ID` | Your Cloudflare account ID |
 | `R2_ACCESS_KEY_ID` | R2 API token access key |
 | `R2_SECRET_ACCESS_KEY` | R2 API token secret |
@@ -86,10 +88,13 @@ npm run build   # production build in dist/
 
 ## Deploy to Vercel
 
-Only the web app is hosted on Vercel. The `files` and `cleanup` functions and the database stay on Supabase, and files stay in R2.
+The web app and the `/api/files` upload API run on Vercel. The database stays on Supabase, and file bytes stay in R2.
 
 1. Push this project to GitHub and import it in Vercel (framework preset: Vite). `vercel.json` already sets the build command, output folder, page routing, and security headers.
-2. In Vercel > Project > Settings > Environment Variables, add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` with the same values as `.env`, then redeploy.
+2. In Vercel > Project > Settings > Environment Variables, add:
+   - Client env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+   - Server env: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`
+   Then redeploy.
 3. Add your Vercel domain (e.g. `https://your-app.vercel.app` and any custom domain) to `AllowedOrigins` in the R2 bucket's CORS policy, or uploads will be blocked.
 
 ## Project structure
@@ -98,9 +103,11 @@ Only the web app is hosted on Vercel. The `files` and `cleanup` functions and th
 src/
   App.tsx                 page flow: upload, share, download
   components/             UI pieces (drop zone, options, panels, views)
-  lib/api.ts              calls to the files server function
+  lib/api.ts              calls `/api/files` (or a configured endpoint)
   lib/history.ts          browser-remembered uploads
   lib/upload.ts           direct-to-R2 upload with progress
+api/
+  files.ts                Vercel server API for upload/download/list/delete
 supabase/
   functions/files/        main server function
   functions/cleanup/      scheduled auto-delete
