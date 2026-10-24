@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.3",
+    "aws4fetch": "^1.0.20",
     "lucide-react": "^0.446.0",
     "qrcode.react": "^4.2.0",
     "react": "^18.3.1",

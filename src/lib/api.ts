@@ -1,10 +1,17 @@
 import type { FileRecord, SavedUpload } from '@/lib/types';
 
-const ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/files`;
+const DEFAULT_ENDPOINT = '/api/files';
+const FALLBACK_ENDPOINT = import.meta.env.VITE_SUPABASE_URL ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/files` : '';
+const ENDPOINT =
+  import.meta.env.VITE_FILES_ENDPOINT ||
+  (import.meta.env.PROD ? DEFAULT_ENDPOINT : FALLBACK_ENDPOINT || DEFAULT_ENDPOINT);
 const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
     super(message);
   }
 }
@@ -12,9 +19,15 @@ export class ApiError extends Error {
 async function call<T>(action: string, payload: Record<string, unknown>): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(ENDPOINT, {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (KEY) {
+      headers.Authorization = ['Bearer', KEY].join(' ');
+      headers.apikey = KEY;
+    }
+
+    res = await fetch(ENDPOINT || FALLBACK_ENDPOINT, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${KEY}`, apikey: KEY, 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ action, ...payload }),
     });
   } catch {
